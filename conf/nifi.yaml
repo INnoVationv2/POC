@@ -1,0 +1,14 @@
+DEV:
+  host: https://127.0.0.1:8443
+  username: 7b762207-7311-4eed-8907-5372eec2b3d4
+  pwd: Iwss+6I/vrFwmeX+EUhTscVq7MGv9vQL
+
+Droid UAT:
+  host: https://Uat
+  username: yl78744
+  pwd:
+
+PROD:
+  host: https://Prod
+  username:
+  pwd:

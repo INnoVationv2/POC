@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Update Nifi Parameter</title>
+     <style>
+        .section {
+            border: 5px solid black;
+            padding: 10px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!--  Choose NIFI Instance  -->
+    <div class="section">
+        <h2 style="color: #5F9F9F">NIFI Instance:</h2>
+        {% for envName, value in envs.items() %}
+            <label>
+                <input type="checkbox" id="{{envName}}" name="option"  class="single-checkbox"> {{ envName }}
+            </label>
+        {% endfor %}
+        <br>
+        <div>
+            <label>
+                Host:
+                <input readonly="readonly" style="width: 200px;" placeholder = "Nifi Address" id="host" name = "NifiInfo">
+            </label>
+        </div>
+        <div>
+            Username:
+            <label>
+                <input readonly="readonly" style="width: 200px;" placeholder = "Nifi Username" id="username" name = "NifiInfo">
+            </label>
+        </div>
+    </div>
+
+    <!-- Upload File -->
+    <div class="section">
+        <h2 style="color: #5F9F9F">Upload File</h2>
+        <div>
+            <h3>Excel File:</h3>
+            <div style="text-indent: -2em; margin-left: 1em;">
+                <p>
+                    <a style="text-indent: -2em; margin-left: 2em; font-size: 15px">Current File:</a>
+                    <a id="excelFile"></a><br>
+                    <a style="font-size: 15px">Create Time:</a>
+                    <a id="excelDetail"></a>
+                </p>
+                <input type="file" id="excelInput">
+                <button id="uploadExcel" style="font-size: 16px; color: forestgreen">Upload&Check</button>
+            </div>
+        </div>
+        <div>
+            <h3>SQL File:</h3>
+            <div style="text-indent: -2em; margin-left: 1em;">
+                <p>
+                    <a style="text-indent: -2em; margin-left: 2em; font-size: 15px">Current File:</a>
+                    <a id="sqlFile"></a><br>
+                    <a style="font-size: 15px">Create Time:</a>
+                    <a id="sqlDetail"></a>
+                    <br>
+                </p>
+                <input type="file" id="sqlInput">
+                <button id="uploadSql" style="font-size: 16px; color: forestgreen">Upload&Check</button>
+            </div>
+        </div>
+
+        <div>
+            <br>
+            <button id="checkFile" style="font-size: 20px; color: Blue">Check File</button>
+        </div>
+    </div>
+
+    <!-- Update Parameter -->
+    <div class="section">
+        <h2 style="color: #5F9F9F">Update Parameter</h2>
+        <div>
+            Parameter Context Id:
+            <label>
+                <input style="width: 200px;" placeholder = "Parameter Context Id" id="parameterContextId">
+                <br><br>
+                <button id="Update Parameter" style="font-size: 20px; color: Blue">Update Parameter</button>
+            </label>
+        </div>
+<!--        <div>-->
+<!--            <form action="/result" method="POST">-->
+<!--                <button id="getResult" formaction="">Update Parameter</button>-->
+<!--            </form>-->
+<!--        </div>-->
+    </div>
+
+    <script>
+        // Choose NIFI Instance:
+        const checkboxes = document.querySelectorAll('.single-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    checkboxes.forEach(otherCheckbox => {
+                        if (otherCheckbox !== this) {
+                            otherCheckbox.checked = false;
+                        }
+                    });
+                }
+                changeNifiInfoByName(this.id);
+            });
+        });
+
+        // Change Host And Username when instance is choose
+         async function changeNifiInfoByName(instanceName){
+            try {
+                const response = await fetch(`/nifi/instance/${instanceName}`, {
+                    method: "GET"
+                });
+                const data = await response.json();
+                if (isEmptyStr(data)) {
+                    return
+                }
+                document.getElementById("host").value = data['host'];
+                document.getElementById("username").value = data['username'];
+                document.getElementById("pwd").value = data['pwd'];
+            } catch (error) {
+                console.error("Error fetching data from the backend:", error);
+            }
+        }
+
+        // Show Current File
+        getCurrentFile()
+        async function getCurrentFile(){
+            try {
+                const response = await fetch(`file/getCurrentFile`, {
+                    method: "GET"
+                });
+                const data = await response.json();
+                if (isEmptyStr(data)) {
+                    return
+                }
+                if ('excel' in data){
+                    let excel = data['excel']['name']
+                    let create_time = data['excel']['createTime']
+                    let link = document.getElementById("excelFile");
+                    link.href = `/file/${excel}`
+                    link.textContent = excel.substring(37)
+                    let createTime = document.getElementById("excelDetail");
+                    createTime.textContent = create_time
+                }
+
+                if ('sql' in data){
+                    let sql = data['sql']['name']
+                    let create_time = data['sql']['createTime']
+                    let link = document.getElementById("sqlFile");
+                    link.href = `/file/${sql}`
+                    link.textContent = sql.substring(37)
+                    let createTime = document.getElementById("sqlDetail");
+                    createTime.textContent = create_time
+                }
+            } catch (error) {
+                console.error("Error fetching data from the backend:", error);
+            }
+        }
+
+
+        // Upload Excel
+        document.getElementById("uploadExcel").addEventListener("click", function() {
+            handleUpload("excel");
+        });
+
+         // Upload Sql
+        document.getElementById("uploadSql").addEventListener("click", function() {
+            handleUpload("sql");
+        });
+
+        // Upload Logic
+        function handleUpload(fileType) {
+            const fileInput = document.getElementById(fileType + "Input");
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("please choose a file to upload!");
+                return;
+            }
+
+            if(fileType === 'excel' && !file.name.endsWith(".xlsx")){
+                alert("Not An Excel File!");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            let uploadUrl = ""
+            if(fileType === "excel"){
+                uploadUrl = "file/upload/excel"
+            } else {
+                uploadUrl = "file/upload/sql"
+            }
+
+            fetch(uploadUrl, {
+                method: "POST",
+                body: formData
+            })
+            .then(response =>{
+                if(response.status === 400){
+                    alert(`Check failed`)
+                    return response.blob();
+                }
+                alert("Upload Success!")
+            })
+            .then(blob => {
+                // 使用 Blob 对象进行处理，例如创建下载链接
+                let link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${fileType}_error.txt`;
+                link.click();
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+        }
+
+        // Check Excel And Sql is Correct
+        document.getElementById("checkFile").addEventListener("click", function() {
+             fetch("/checkFile", {
+                method: "GET"
+            })
+            .then(response => {
+
+                response.text()
+            })
+            .then(message => {
+                alert(message);
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+        });
+
+
+        function isEmptyStr(s){
+            return s === undefined || s === null || s === '';
+        }
+
+         document.getElementById("Update Parameter").addEventListener("click", function() {
+
+             const checkboxes = document.querySelectorAll('.single-checkbox');
+             let selected = false
+             checkboxes.forEach(checkbox => {
+                 if(checkbox.checked)
+                     selected = true
+             });
+             if(!selected){
+                 alert("Select a NIFI Instance to update");
+                 return;
+             }
+
+
+             const parameterContextId = document.getElementById("parameterContextId").value;
+             if(isEmptyStr(parameterContextId)) {
+                 alert("parameterContextId is not set")
+                 return;
+             }
+
+             fetch(`/nifi/update/${parameterContextId}`, {
+                method: "GET"
+            })
+            .then(response => response.text())
+            .then(message => {
+                alert(message);
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+        });
+    </script>
+</body>
+</html>
